@@ -24,11 +24,17 @@ export async function GET(request: NextRequest) {
         .orderBy(asc(services.order), asc(services.createdAt));
     }
 
-    return NextResponse.json(servicesList);
-  } catch (error) {
+    return NextResponse.json(servicesList);  } catch (error) {
     console.error("Error fetching services:", error);
     return NextResponse.json(
-      { error: "Ошибка при получении услуг" },
+      { 
+        error: "Ошибка при получении услуг",
+        details: error instanceof Error ? error.message : "Unknown error",
+        env: {
+          hasDbUrl: !!process.env.DATABASE_URL,
+          nodeEnv: process.env.NODE_ENV
+        }
+      },
       { status: 500 }
     );
   }
