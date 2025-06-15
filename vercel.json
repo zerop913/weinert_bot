@@ -1,0 +1,11 @@
+{
+  "buildCommand": "yarn build",
+  "devCommand": "yarn dev",
+  "installCommand": "yarn install",
+  "framework": "nextjs",
+  "env": {
+    "DATABASE_URL": "@database_url",
+    "SUPABASE_PROJECT_ID": "@supabase_project_id",
+    "NEXT_PUBLIC_APP_URL": "@next_public_app_url"
+  }
+}
