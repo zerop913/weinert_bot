@@ -7,10 +7,11 @@ const config: Config = {
     "./src/app/**/*.{js,ts,jsx,tsx,mdx}",
   ],
   theme: {
-    extend: {      fontFamily: {
-        inter: ["Inter", "system-ui", "-apple-system", "sans-serif"],
-        playfair: ["Playfair Display", "serif"],
-        mono: ["Consolas", "Monaco", "Courier New", "monospace"],
+    extend: {
+      fontFamily: {
+        inter: ["var(--font-inter)", "Inter", "sans-serif"],
+        playfair: ["var(--font-playfair)", "Playfair Display", "serif"],
+        mono: ["var(--font-mono)", "JetBrains Mono", "monospace"],
       },
       animation: {
         "float-slow": "float-slow 6s ease-in-out infinite",

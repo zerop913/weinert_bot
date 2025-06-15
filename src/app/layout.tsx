@@ -26,7 +26,7 @@ export default function RootLayout({
       <body
         className="font-inter antialiased m-0 p-0"
         style={{
-          fontFamily: 'Inter, system-ui, -apple-system, sans-serif'
+          fontFamily: "Inter, system-ui, -apple-system, sans-serif",
         }}
         suppressHydrationWarning={true}
       >
