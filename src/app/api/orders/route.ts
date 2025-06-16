@@ -73,7 +73,7 @@ export async function POST(request: NextRequest) {
         if (finalTelegramUserId) {
           await botInstance.notifyOrderCreated(finalTelegramUserId, {
             orderNumber,
-            serviceName: "Художественная комиссия",
+            serviceName: "Заказ WEINERT",
             price: body.desiredPrice,
             deadline: body.deadline,
           });

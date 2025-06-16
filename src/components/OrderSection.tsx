@@ -18,7 +18,8 @@ export default function OrderSection() {
     desiredPrice: "",
     contactInfo: "",
   });
-  const [loading, setLoading] = useState(false);  const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [submitted, setSubmitted] = useState(false);
   const [orderNumber, setOrderNumber] = useState("");
   const [telegramWebApp, setTelegramWebApp] = useState<any>(null);
   useEffect(() => {
@@ -65,7 +66,8 @@ export default function OrderSection() {
         initDataUnsafe: telegramWebApp?.initDataUnsafe,
         user: telegramWebApp?.initDataUnsafe?.user,
         userId: telegramWebApp?.initDataUnsafe?.user?.id,
-      });      const submitData = {
+      });
+      const submitData = {
         ...formData,
         charactersCount: parseInt(formData.charactersCount) || 1,
         // Добавляем Telegram User ID если доступен
@@ -73,7 +75,7 @@ export default function OrderSection() {
         // Добавляем Telegram Username если доступен
         telegramUsername: telegramWebApp?.initDataUnsafe?.user?.username || "",
         // Fallback: если нет прямого ID, но есть username в contactInfo
-        fallbackUsername: formData.contactInfo.replace('@', '') || '',
+        fallbackUsername: formData.contactInfo.replace("@", "") || "",
       };
 
       console.log("Отправляемые данные:", submitData);
@@ -84,7 +86,8 @@ export default function OrderSection() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(submitData),
-      });      if (response.ok) {
+      });
+      if (response.ok) {
         const result = await response.json();
         setOrderNumber(result.orderNumber);
         setSubmitted(true);
@@ -147,7 +150,8 @@ export default function OrderSection() {
                 d="M5 13l4 4L19 7"
               />
             </svg>
-          </div>          <h2 className="text-3xl font-bold text-white mb-4">
+          </div>{" "}
+          <h2 className="text-3xl font-bold text-white mb-4">
             Заказ отправлен!
           </h2>
           <div className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-6 mb-6">
@@ -155,7 +159,8 @@ export default function OrderSection() {
               Номер заказа: {orderNumber}
             </p>
             <p className="text-gray-300 mb-4">
-              Чтобы получать уведомления о статусе заказа, напишите боту команду:
+              Чтобы получать уведомления о статусе заказа, напишите боту
+              команду:
             </p>
             <div className="bg-black/30 rounded-lg p-3 font-mono text-green-400 text-center">
               /link {orderNumber}

@@ -98,7 +98,7 @@ export async function POST(request: NextRequest) {
       // Логируем информацию о пользователе для отладки
       console.log(
         `User ID: ${user?.id}, Username: ${user?.username}, Chat ID: ${chatId}, Message: ${text}`
-      );      // Обработка команды /start
+      ); // Обработка команды /start
       if (text === "/start") {
         const welcomeMessage =
           "Приветствую, меня зовут Лина (´｡• ᵕ •｡`) ♡\n\nЯ диджитал художница, рисующая в около-реализме уже несколько лет. Рада приветствовать в своем творческом уголке. 💓\n\nЧтобы оформить заказ и узнать больше о моих работах, нажмите кнопку ниже:\n\n📱 <b>Чтобы получать уведомления о заказе:</b>\nПосле оформления заказа напишите команду:\n<code>/link НОМЕР_ЗАКАЗА</code>\n\nНапример: <code>/link W-001</code>";
@@ -146,15 +146,19 @@ export async function POST(request: NextRequest) {
         }</code>\n• Username: ${
           user?.username ? `@${user?.username}` : "не указан"
         }\n• Имя: ${user?.first_name}${
-          user?.last_name ? ` ${user?.last_name}` : ""        }`;
+          user?.last_name ? ` ${user?.last_name}` : ""
+        }`;
         await sendMessage(chatId, message);
       }
       // Обработка команды /link для связывания с заказом
-      else if (text.startsWith('/link ')) {
-        const orderNumber = text.replace('/link ', '').trim();
-        
+      else if (text.startsWith("/link ")) {
+        const orderNumber = text.replace("/link ", "").trim();
+
         if (!orderNumber) {
-          await sendMessage(chatId, "❌ Укажите номер заказа.\nПример: /link W-001");
+          await sendMessage(
+            chatId,
+            "❌ Укажите номер заказа.\nПример: /link W-001"
+          );
           return NextResponse.json({ ok: true });
         }
 
@@ -167,36 +171,48 @@ export async function POST(request: NextRequest) {
             .limit(1);
 
           if (orders.length === 0) {
-            await sendMessage(chatId, `❌ Заказ с номером ${orderNumber} не найден.`);
+            await sendMessage(
+              chatId,
+              `❌ Заказ с номером ${orderNumber} не найден.`
+            );
             return NextResponse.json({ ok: true });
           }
 
           // Обновляем заказ с ID пользователя
           await db
             .update(artOrders)
-            .set({ 
+            .set({
               telegramUserId: user?.id.toString(),
-              telegramUsername: user?.username || null 
+              telegramUsername: user?.username || null,
             })
-            .where(eq(artOrders.orderNumber, orderNumber));          await sendMessage(chatId, `✅ Заказ ${orderNumber} успешно привязан к вашему аккаунту!\n\nТеперь вы будете получать уведомления о статусе заказа.`);
-          
+            .where(eq(artOrders.orderNumber, orderNumber));
+          await sendMessage(
+            chatId,
+            `✅ Заказ ${orderNumber} успешно привязан к вашему аккаунту!\n\nТеперь вы будете получать уведомления о статусе заказа.`
+          );
+
           // Отправляем тестовое уведомление пользователю
           const bot = getBotInstance();
           if (bot) {
             await bot.notifyOrderCreated(user?.id.toString(), {
               orderNumber,
-              serviceName: "Художественная комиссия",
+              serviceName: "Заказ WEINERT",
               price: orders[0].desiredPrice,
               deadline: orders[0].deadline,
             });
           }
-          
-          console.log(`Заказ ${orderNumber} привязан к пользователю ${user?.id} (@${user?.username})`);
+
+          console.log(
+            `Заказ ${orderNumber} привязан к пользователю ${user?.id} (@${user?.username})`
+          );
         } catch (error) {
           console.error("Ошибка привязки заказа:", error);
-          await sendMessage(chatId, "❌ Произошла ошибка при привязке заказа. Попробуйте позже.");
+          await sendMessage(
+            chatId,
+            "❌ Произошла ошибка при привязке заказа. Попробуйте позже."
+          );
         }
-      }// Обработка команды /admin
+      } // Обработка команды /admin
       else if (text === "/admin") {
         const userId = user?.id;
 
