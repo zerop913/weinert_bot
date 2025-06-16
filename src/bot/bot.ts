@@ -119,7 +119,6 @@ export class WeinertBot {
       console.error("Error sending order cancelled notification:", error);
     }
   }
-
   /**
    * Отправляет уведомление админам о новом заказе
    */
@@ -129,11 +128,22 @@ export class WeinertBot {
     idea: string;
     price: string;
     deadline: string;
+    telegramUserId?: string;
+    telegramUsername?: string;
   }): Promise<void> {
     try {
+      // Формируем информацию о пользователе
+      let userInfo = `👤 Клиент: ${orderData.clientName}`;
+      
+      if (orderData.telegramUsername) {
+        userInfo += ` (@${orderData.telegramUsername})`;
+      } else if (orderData.telegramUserId) {
+        userInfo += ` (ID: ${orderData.telegramUserId})`;
+      }
+
       const message = `${BOT_CONFIG.MESSAGES.NEW_ORDER_ADMIN}
 
-👤 Клиент: ${orderData.clientName}
+${userInfo}
 💡 Идея: ${orderData.idea.substring(0, 100)}${
         orderData.idea.length > 100 ? "..." : ""
       }

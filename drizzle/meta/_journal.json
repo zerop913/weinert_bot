@@ -15,6 +15,13 @@
       "when": 1750032132672,
       "tag": "0001_tired_sumo",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1750037383878,
+      "tag": "0002_chemical_lorna_dane",
+      "breakpoints": true
     }
   ]
 }

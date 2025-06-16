@@ -27,9 +27,9 @@ export const artOrders = pgTable("art_orders", {
   idea: text("idea").notNull(),
   additionalWishes: text("additional_wishes"),
   deadline: text("deadline").notNull(),
-  desiredPrice: text("desired_price").notNull(),
-  contactInfo: text("contact_info"),
+  desiredPrice: text("desired_price").notNull(),  contactInfo: text("contact_info"),
   telegramUserId: text("telegram_user_id"), // ID пользователя Telegram для уведомлений
+  telegramUsername: text("telegram_username"), // Username пользователя Telegram
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

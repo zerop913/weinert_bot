@@ -1,0 +1,1 @@
+ALTER TABLE "art_orders" ADD COLUMN "telegram_username" text;

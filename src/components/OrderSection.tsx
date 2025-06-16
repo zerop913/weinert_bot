@@ -45,12 +45,13 @@ export default function OrderSection() {
     e.preventDefault();
     setLoading(true);
 
-    try {
-      const submitData = {
+    try {      const submitData = {
         ...formData,
         charactersCount: parseInt(formData.charactersCount) || 1,
         // Добавляем Telegram User ID если доступен
         telegramUserId: telegramWebApp?.initDataUnsafe?.user?.id?.toString(),
+        // Добавляем Telegram Username если доступен
+        telegramUsername: telegramWebApp?.initDataUnsafe?.user?.username || "",
       };
 
       const response = await fetch("/api/orders", {

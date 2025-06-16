@@ -14,6 +14,7 @@ export interface ArtOrder {
   desiredPrice: string;
   contactInfo?: string;
   telegramUserId?: string;
+  telegramUsername?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }

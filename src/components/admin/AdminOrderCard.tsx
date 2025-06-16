@@ -90,11 +90,13 @@ export function AdminOrderCard({
         </div>
       </div>
       {/* Основная информация */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-        <div className="space-y-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">        <div className="space-y-3">
           <div>
             <p className="text-sm font-medium text-gray-400">👤 Клиент</p>
             <p className="text-white font-medium">{order.name}</p>
+            {order.telegramUsername && (
+              <p className="text-sm text-blue-400">@{order.telegramUsername}</p>
+            )}
           </div>
           <div>
             <p className="text-sm font-medium text-gray-400">💰 Цена</p>
@@ -207,16 +209,17 @@ export function AdminOrderCard({
                 {order.adminComment}
               </p>
             </div>
-          )}
-
-          {order.telegramUserId && (
+          )}          {order.telegramUserId && (
             <div>
               <p className="text-sm font-medium text-gray-400 mb-2">
-                🤖 Telegram ID
+                🤖 Telegram
               </p>
-              <p className="text-gray-300 bg-black/30 p-4 rounded-lg border border-gray-700/50 font-mono">
-                {order.telegramUserId}
-              </p>
+              <div className="text-gray-300 bg-black/30 p-4 rounded-lg border border-gray-700/50">
+                <p className="font-mono">ID: {order.telegramUserId}</p>
+                {order.telegramUsername && (
+                  <p className="text-blue-400">@{order.telegramUsername}</p>
+                )}
+              </div>
             </div>
           )}
         </motion.div>

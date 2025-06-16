@@ -8,9 +8,7 @@ import { eq } from "drizzle-orm";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const orderNumber = generateOrderNumber();
-
-    const newOrder = await db
+    const orderNumber = generateOrderNumber();    const newOrder = await db
       .insert(artOrders)
       .values({
         orderNumber,
@@ -23,6 +21,7 @@ export async function POST(request: NextRequest) {
         desiredPrice: body.desiredPrice,
         contactInfo: body.contactInfo || "",
         telegramUserId: body.telegramUserId || "",
+        telegramUsername: body.telegramUsername || "",
         status: "новый",
       })
       .returning();
@@ -36,15 +35,15 @@ export async function POST(request: NextRequest) {
         serviceName: "Художественная комиссия", // TODO: получать из данных о услуге
         price: body.desiredPrice,
         deadline: body.deadline,
-      });
-
-      // Уведомление админам
+      });      // Уведомление админам
       await bot.notifyAdminsNewOrder({
         orderNumber,
         clientName: body.name,
         idea: body.idea,
         price: body.desiredPrice,
         deadline: body.deadline,
+        telegramUserId: body.telegramUserId,
+        telegramUsername: body.telegramUsername,
       });
     }
 
