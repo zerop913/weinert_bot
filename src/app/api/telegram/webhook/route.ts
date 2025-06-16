@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { initializeBot, getBotInstance } from "@/bot/bot";
+import { BOT_CONFIG, BOT_MESSAGES } from "@/bot/config";
 import { db } from "@/lib/db";
 import { telegramUsers, artOrders } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
@@ -100,9 +101,6 @@ export async function POST(request: NextRequest) {
         `User ID: ${user?.id}, Username: ${user?.username}, Chat ID: ${chatId}, Message: ${text}`
       ); // Обработка команды /start
       if (text === "/start") {
-        const welcomeMessage =
-          "Приветствую, меня зовут Лина (´｡• ᵕ •｡`) ♡\n\nЯ диджитал художница, рисующая в около-реализме уже несколько лет. Рада приветствовать в своем творческом уголке. 💓\n\nЧтобы оформить заказ и узнать больше о моих работах, нажмите кнопку ниже:\n\n📱 <b>Чтобы получать уведомления о заказе:</b>\nПосле оформления заказа напишите команду:\n<code>/link НОМЕР_ЗАКАЗА</code>\n\nНапример: <code>/link W-001</code>";
-
         const keyboard = {
           inline_keyboard: [
             [
@@ -126,10 +124,30 @@ export async function POST(request: NextRequest) {
                 },
               },
             ],
+            [
+              {
+                text: "❓ Помощь",
+                callback_data: "help",
+              },
+              {
+                text: "💰 Цены",
+                callback_data: "pricing",
+              },
+            ],
+            [
+              {
+                text: "📊 Статусы",
+                callback_data: "status",
+              },
+              {
+                text: "ℹ️ О боте",
+                callback_data: "info",
+              },
+            ],
           ],
         };
 
-        await sendMessage(chatId, welcomeMessage, keyboard);
+        await sendMessage(chatId, BOT_MESSAGES.WELCOME, keyboard);
 
         // Сохраняем пользователя для возможных уведомлений
         await saveUserForNotifications(
@@ -138,17 +156,6 @@ export async function POST(request: NextRequest) {
           user?.first_name,
           user?.last_name
         );
-      }
-      // Обработка команды /myid - для получения ID пользователя
-      else if (text === "/myid") {
-        const message = `🆔 Ваши данные:\n\n• ID: <code>${
-          user?.id
-        }</code>\n• Username: ${
-          user?.username ? `@${user?.username}` : "не указан"
-        }\n• Имя: ${user?.first_name}${
-          user?.last_name ? ` ${user?.last_name}` : ""
-        }`;
-        await sendMessage(chatId, message);
       }
       // Обработка команды /link для связывания с заказом
       else if (text.startsWith("/link ")) {
@@ -255,17 +262,47 @@ export async function POST(request: NextRequest) {
           "🔐 Добро пожаловать в админ-панель!\n\nНажмите кнопку ниже, чтобы открыть панель управления заказами.",
           adminKeyboard
         );
-      }
-      // Обработка других команд
+      } // Обработка других команд
       else if (text === "/help") {
-        const helpMessage =
-          "🤖 Доступные команды:\n\n/start - Главное меню\n/help - Справка\n/admin - Админ-панель (только для администраторов)\n\nИли используйте кнопки ниже для быстрого доступа:";
-
         const keyboard = {
           inline_keyboard: [
             [
               {
-                text: "📝 Заказать",
+                text: "🔗 Как привязать заказ",
+                callback_data: "link_help",
+              },
+            ],
+            [
+              {
+                text: "📝 Заказать арт",
+                web_app: {
+                  url: `${
+                    process.env.NEXT_PUBLIC_APP_URL ||
+                    "https://weinert-bot.vercel.app"
+                  }/order`,
+                },
+              },
+            ],
+            [
+              {
+                text: "🏠 Главное меню",
+                callback_data: "start",
+              },
+            ],
+          ],
+        };
+
+        await sendMessage(chatId, BOT_MESSAGES.HELP, keyboard);
+      }
+      // Новые команды
+      else if (text === "/info") {
+        await sendMessage(chatId, BOT_MESSAGES.BOT_INFO);
+      } else if (text === "/pricing") {
+        const keyboard = {
+          inline_keyboard: [
+            [
+              {
+                text: "📝 Заказать арт",
                 web_app: {
                   url: `${
                     process.env.NEXT_PUBLIC_APP_URL ||
@@ -276,14 +313,220 @@ export async function POST(request: NextRequest) {
             ],
           ],
         };
-
-        await sendMessage(chatId, helpMessage, keyboard);
+        await sendMessage(chatId, BOT_MESSAGES.PRICING_INFO, keyboard);
+      } else if (text === "/status") {
+        await sendMessage(chatId, BOT_MESSAGES.ORDER_STATUS_INFO);
+      } else if (text.startsWith("/link_help")) {
+        await sendMessage(chatId, BOT_MESSAGES.LINK_INSTRUCTIONS);
       } else {
         // Ответ на любое другое сообщение
-        const defaultMessage =
-          "Привет! 👋\n\nДля навигации используйте команду /start или /help";
+        const keyboard = {
+          inline_keyboard: [
+            [
+              {
+                text: "🏠 Главное меню",
+                callback_data: "start",
+              },
+              {
+                text: "❓ Помощь",
+                callback_data: "help",
+              },
+            ],
+          ],
+        };
+        await sendMessage(chatId, BOT_MESSAGES.UNKNOWN_COMMAND, keyboard);
+      }
+    }
 
-        await sendMessage(chatId, defaultMessage);
+    // Обработка callback запросов (inline кнопки)
+    if (body.callback_query) {
+      const callbackQuery = body.callback_query;
+      const chatId = callbackQuery.message.chat.id;
+      const data = callbackQuery.data;
+      const user = callbackQuery.from;
+
+      // Подтверждаем получение callback
+      const answerUrl = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`;
+      await fetch(answerUrl, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ callback_query_id: callbackQuery.id }),
+      });
+
+      // Обрабатываем различные callback данные
+      switch (data) {
+        case "help":
+          const helpKeyboard = {
+            inline_keyboard: [
+              [
+                {
+                  text: "🔗 Как привязать заказ",
+                  callback_data: "link_help",
+                },
+              ],
+              [
+                {
+                  text: "📝 Заказать арт",
+                  web_app: {
+                    url: `${
+                      process.env.NEXT_PUBLIC_APP_URL ||
+                      "https://weinert-bot.vercel.app"
+                    }/order`,
+                  },
+                },
+              ],
+              [
+                {
+                  text: "🏠 Главное меню",
+                  callback_data: "start",
+                },
+              ],
+            ],
+          };
+          await sendMessage(chatId, BOT_MESSAGES.HELP, helpKeyboard);
+          break;
+
+        case "pricing":
+          const pricingKeyboard = {
+            inline_keyboard: [
+              [
+                {
+                  text: "📝 Заказать арт",
+                  web_app: {
+                    url: `${
+                      process.env.NEXT_PUBLIC_APP_URL ||
+                      "https://weinert-bot.vercel.app"
+                    }/order`,
+                  },
+                },
+              ],
+              [
+                {
+                  text: "🏠 Главное меню",
+                  callback_data: "start",
+                },
+              ],
+            ],
+          };
+          await sendMessage(chatId, BOT_MESSAGES.PRICING_INFO, pricingKeyboard);
+          break;
+
+        case "status":
+          const statusKeyboard = {
+            inline_keyboard: [
+              [
+                {
+                  text: "🏠 Главное меню",
+                  callback_data: "start",
+                },
+              ],
+            ],
+          };
+          await sendMessage(
+            chatId,
+            BOT_MESSAGES.ORDER_STATUS_INFO,
+            statusKeyboard
+          );
+          break;
+
+        case "info":
+          const infoKeyboard = {
+            inline_keyboard: [
+              [
+                {
+                  text: "🏠 Главное меню",
+                  callback_data: "start",
+                },
+                {
+                  text: "❓ Помощь",
+                  callback_data: "help",
+                },
+              ],
+            ],
+          };
+          await sendMessage(chatId, BOT_MESSAGES.BOT_INFO, infoKeyboard);
+          break;
+
+        case "link_help":
+          const linkKeyboard = {
+            inline_keyboard: [
+              [
+                {
+                  text: "📝 Заказать арт",
+                  web_app: {
+                    url: `${
+                      process.env.NEXT_PUBLIC_APP_URL ||
+                      "https://weinert-bot.vercel.app"
+                    }/order`,
+                  },
+                },
+              ],
+              [
+                {
+                  text: "🏠 Главное меню",
+                  callback_data: "start",
+                },
+              ],
+            ],
+          };
+          await sendMessage(
+            chatId,
+            BOT_MESSAGES.LINK_INSTRUCTIONS,
+            linkKeyboard
+          );
+          break;
+
+        case "start":
+          const startKeyboard = {
+            inline_keyboard: [
+              [
+                {
+                  text: "🎨 Открыть портфолио",
+                  web_app: {
+                    url:
+                      process.env.NEXT_PUBLIC_APP_URL ||
+                      "https://your-project.vercel.app",
+                  },
+                },
+              ],
+              [
+                {
+                  text: "📝 Заказать арт",
+                  web_app: {
+                    url: `${
+                      process.env.NEXT_PUBLIC_APP_URL ||
+                      "https://your-project.vercel.app"
+                    }/order`,
+                  },
+                },
+              ],
+              [
+                {
+                  text: "❓ Помощь",
+                  callback_data: "help",
+                },
+                {
+                  text: "💰 Цены",
+                  callback_data: "pricing",
+                },
+              ],
+              [
+                {
+                  text: "📊 Статусы",
+                  callback_data: "status",
+                },
+                {
+                  text: "ℹ️ О боте",
+                  callback_data: "info",
+                },
+              ],
+            ],
+          };
+          await sendMessage(chatId, BOT_MESSAGES.WELCOME, startKeyboard);
+          break;
+
+        default:
+          await sendMessage(chatId, "❓ Неизвестная команда");
       }
     }
 

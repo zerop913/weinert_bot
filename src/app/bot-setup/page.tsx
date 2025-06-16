@@ -26,7 +26,6 @@ export default function BotSetupPage() {
       setLoading(false);
     }
   };
-
   const setupWebhook = async () => {
     setLoading(true);
     try {
@@ -36,15 +35,61 @@ export default function BotSetupPage() {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ webhookUrl }),
+        body: JSON.stringify({
+          webhookUrl,
+          setupCommands: true, // Также устанавливаем команды
+        }),
       });
       const data = await response.json();
       console.log("Setup result:", data);
+
+      if (data.success) {
+        setBotStatus("success");
+        setMessage("Бот успешно настроен! Webhook и команды установлены.");
+      } else {
+        setBotStatus("error");
+        setMessage("Ошибка настройки бота");
+      }
 
       // Обновляем информацию о webhook
       await checkWebhook();
     } catch (error) {
       console.error("Error:", error);
+      setBotStatus("error");
+      setMessage("Ошибка подключения");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const setupCommands = async () => {
+    setLoading(true);
+    try {
+      const response = await fetch("/api/telegram/setup", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          setupCommands: true, // Устанавливаем только команды
+        }),
+      });
+      const data = await response.json();
+
+      if (data.success) {
+        setBotStatus("success");
+        setMessage("Команды бота успешно установлены!");
+      } else {
+        setBotStatus("error");
+        setMessage("Ошибка установки команд");
+      }
+
+      // Обновляем информацию
+      await checkWebhook();
+    } catch (error) {
+      console.error("Error:", error);
+      setBotStatus("error");
+      setMessage("Ошибка подключения");
     } finally {
       setLoading(false);
     }
@@ -144,6 +189,10 @@ export default function BotSetupPage() {
               {loading ? "Настраиваем..." : "Настроить webhook"}
             </Button>
 
+            <Button onClick={setupCommands} disabled={loading}>
+              {loading ? "Устанавливаем..." : "Установить команды бота"}
+            </Button>
+
             {webhookInfo && (
               <div className="mt-6 p-4 bg-gray-100 rounded">
                 <h3 className="font-bold mb-2">Информация о webhook:</h3>
@@ -163,8 +212,44 @@ export default function BotSetupPage() {
             <li>Скопируйте токен бота</li>
             <li>Вставьте токен в поле выше и нажмите "Настроить бота"</li>
             <li>Настройте webhook для получения сообщений</li>
-            <li>Проверьте работу бота командой /admin</li>
+            <li>Установите команды бота</li>
+            <li>Проверьте работу бота командой /start</li>
           </ol>
+        </Card>
+
+        {/* Доступные команды */}
+        <Card className="p-6">
+          <h3 className="text-lg font-bold mb-4">🤖 Доступные команды бота</h3>
+          <div className="grid gap-3 text-sm">
+            <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
+              <code>/start</code>
+              <span className="text-gray-600">Главное меню</span>
+            </div>
+            <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
+              <code>/help</code>
+              <span className="text-gray-600">Справка по командам</span>
+            </div>
+            <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
+              <code>/link W-001</code>
+              <span className="text-gray-600">Привязать заказ</span>
+            </div>
+            <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
+              <code>/info</code>
+              <span className="text-gray-600">Информация о боте</span>
+            </div>
+            <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
+              <code>/pricing</code>
+              <span className="text-gray-600">Цены на услуги</span>
+            </div>
+            <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
+              <code>/status</code>
+              <span className="text-gray-600">Статусы заказов</span>
+            </div>
+            <div className="flex justify-between items-center p-2 bg-gray-50 rounded">
+              <code>/admin</code>
+              <span className="text-gray-600">Админ-панель</span>
+            </div>
+          </div>
         </Card>
       </div>
     </div>

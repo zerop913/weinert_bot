@@ -1,4 +1,4 @@
-import { BOT_CONFIG, isAdmin, logAdminAction } from "./config";
+import { BOT_CONFIG, BOT_MESSAGES, isAdmin, logAdminAction } from "./config";
 
 // Проверяем, что мы на сервере
 const isServer = typeof window === "undefined";
@@ -39,9 +39,8 @@ export class WeinertBot {
     this.bot.onText(/\/admin/, async (msg: any) => {
       const chatId = msg.chat.id;
       const userId = msg.from?.id;
-
       if (!userId || !isAdmin(userId)) {
-        await this.bot.sendMessage(chatId, BOT_CONFIG.MESSAGES.UNAUTHORIZED);
+        await this.bot.sendMessage(chatId, BOT_MESSAGES.UNAUTHORIZED);
         return;
       }
 
@@ -58,7 +57,7 @@ export class WeinertBot {
         ],
       };
 
-      await this.bot.sendMessage(chatId, BOT_CONFIG.MESSAGES.ADMIN_WELCOME, {
+      await this.bot.sendMessage(chatId, BOT_MESSAGES.ADMIN_WELCOME, {
         reply_markup: keyboard,
       });
     });
@@ -82,7 +81,7 @@ export class WeinertBot {
     }
   ): Promise<void> {
     try {
-      const message = `${BOT_CONFIG.MESSAGES.ORDER_CREATED_CLIENT}
+      const message = `${BOT_MESSAGES.ORDER_CREATED_CLIENT}
 
 📋 Детали заказа:
 • Номер: ${orderData.orderNumber}
@@ -107,7 +106,7 @@ export class WeinertBot {
     adminComment?: string
   ): Promise<void> {
     try {
-      let message = BOT_CONFIG.MESSAGES.ORDER_CANCELLED_CLIENT.replace(
+      let message = BOT_MESSAGES.ORDER_CANCELLED_CLIENT.replace(
         "{orderNumber}",
         orderNumber
       );
@@ -142,8 +141,7 @@ export class WeinertBot {
       } else if (orderData.telegramUserId) {
         userInfo += ` (ID: ${orderData.telegramUserId})`;
       }
-
-      const message = `${BOT_CONFIG.MESSAGES.NEW_ORDER_ADMIN}
+      const message = `${BOT_MESSAGES.NEW_ORDER_ADMIN}
 
 ${userInfo}
 💡 Идея: ${orderData.idea.substring(0, 100)}${
