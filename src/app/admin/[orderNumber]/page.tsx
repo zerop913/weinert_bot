@@ -24,7 +24,7 @@ export default function AdminOrderPage() {
     try {
       setLoading(true);
       const response = await fetch(`/api/orders/${orderNumber}`);
-      
+
       if (response.ok) {
         const orderData = await response.json();
         setOrder(orderData);
@@ -93,8 +93,13 @@ export default function AdminOrderPage() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-black via-gray-900 to-black flex items-center justify-center">
         <div className="text-center">
-          <div className="text-red-400 text-xl mb-4">{error || "Заказ не найден"}</div>
-          <Button onClick={() => router.push("/admin")} className="bg-purple-600 hover:bg-purple-700">
+          <div className="text-red-400 text-xl mb-4">
+            {error || "Заказ не найден"}
+          </div>
+          <Button
+            onClick={() => router.push("/admin")}
+            className="bg-purple-600 hover:bg-purple-700"
+          >
             <ArrowLeft className="w-4 h-4 mr-2" />
             Вернуться к списку заказов
           </Button>
@@ -119,13 +124,11 @@ export default function AdminOrderPage() {
             <ArrowLeft className="w-4 h-4 mr-2" />
             Вернуться к списку заказов
           </Button>
-          
+
           <h1 className="text-3xl font-bold text-white mb-2">
             Заказ {order.orderNumber}
           </h1>
-          <p className="text-gray-400">
-            Детальная информация о заказе
-          </p>
+          <p className="text-gray-400">Детальная информация о заказе</p>
         </motion.div>
 
         {/* Карточка заказа */}

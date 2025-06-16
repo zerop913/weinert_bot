@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { initializeBot, getBotInstance } from "@/bot/bot";
 import { db } from "@/lib/db";
-import { telegramUsers } from "@/lib/db/schema";
+import { telegramUsers, artOrders } from "@/lib/db/schema";
 import { eq } from "drizzle-orm";
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
@@ -101,7 +101,7 @@ export async function POST(request: NextRequest) {
       );      // Обработка команды /start
       if (text === "/start") {
         const welcomeMessage =
-          "Приветствую, меня зовут Лина (´｡• ᵕ •｡`) ♡\n\nЯ диджитал художница, рисующая в около-реализме уже несколько лет. Рада приветствовать в своем творческом уголке. 💓\n\nЧтобы оформить заказ и узнать больше о моих работах, нажмите кнопку ниже:";
+          "Приветствую, меня зовут Лина (´｡• ᵕ •｡`) ♡\n\nЯ диджитал художница, рисующая в около-реализме уже несколько лет. Рада приветствовать в своем творческом уголке. 💓\n\nЧтобы оформить заказ и узнать больше о моих работах, нажмите кнопку ниже:\n\n📱 <b>Чтобы получать уведомления о заказе:</b>\nПосле оформления заказа напишите команду:\n<code>/link НОМЕР_ЗАКАЗА</code>\n\nНапример: <code>/link W-001</code>";
 
         const keyboard = {
           inline_keyboard: [
@@ -130,14 +130,72 @@ export async function POST(request: NextRequest) {
         };
 
         await sendMessage(chatId, welcomeMessage, keyboard);
-        
+
         // Сохраняем пользователя для возможных уведомлений
-        await saveUserForNotifications(user?.id, user?.username, user?.first_name, user?.last_name);
+        await saveUserForNotifications(
+          user?.id,
+          user?.username,
+          user?.first_name,
+          user?.last_name
+        );
       }
       // Обработка команды /myid - для получения ID пользователя
       else if (text === "/myid") {
-        const message = `🆔 Ваши данные:\n\n• ID: <code>${user?.id}</code>\n• Username: ${user?.username ? `@${user?.username}` : 'не указан'}\n• Имя: ${user?.first_name}${user?.last_name ? ` ${user?.last_name}` : ''}`;
+        const message = `🆔 Ваши данные:\n\n• ID: <code>${
+          user?.id
+        }</code>\n• Username: ${
+          user?.username ? `@${user?.username}` : "не указан"
+        }\n• Имя: ${user?.first_name}${
+          user?.last_name ? ` ${user?.last_name}` : ""        }`;
         await sendMessage(chatId, message);
+      }
+      // Обработка команды /link для связывания с заказом
+      else if (text.startsWith('/link ')) {
+        const orderNumber = text.replace('/link ', '').trim();
+        
+        if (!orderNumber) {
+          await sendMessage(chatId, "❌ Укажите номер заказа.\nПример: /link W-001");
+          return NextResponse.json({ ok: true });
+        }
+
+        try {
+          // Ищем заказ в базе данных
+          const orders = await db
+            .select()
+            .from(artOrders)
+            .where(eq(artOrders.orderNumber, orderNumber))
+            .limit(1);
+
+          if (orders.length === 0) {
+            await sendMessage(chatId, `❌ Заказ с номером ${orderNumber} не найден.`);
+            return NextResponse.json({ ok: true });
+          }
+
+          // Обновляем заказ с ID пользователя
+          await db
+            .update(artOrders)
+            .set({ 
+              telegramUserId: user?.id.toString(),
+              telegramUsername: user?.username || null 
+            })
+            .where(eq(artOrders.orderNumber, orderNumber));          await sendMessage(chatId, `✅ Заказ ${orderNumber} успешно привязан к вашему аккаунту!\n\nТеперь вы будете получать уведомления о статусе заказа.`);
+          
+          // Отправляем тестовое уведомление пользователю
+          const bot = getBotInstance();
+          if (bot) {
+            await bot.notifyOrderCreated(user?.id.toString(), {
+              orderNumber,
+              serviceName: "Художественная комиссия",
+              price: orders[0].desiredPrice,
+              deadline: orders[0].deadline,
+            });
+          }
+          
+          console.log(`Заказ ${orderNumber} привязан к пользователю ${user?.id} (@${user?.username})`);
+        } catch (error) {
+          console.error("Ошибка привязки заказа:", error);
+          await sendMessage(chatId, "❌ Произошла ошибка при привязке заказа. Попробуйте позже.");
+        }
       }// Обработка команды /admin
       else if (text === "/admin") {
         const userId = user?.id;

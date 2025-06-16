@@ -18,8 +18,8 @@ export default function OrderSection() {
     desiredPrice: "",
     contactInfo: "",
   });
-  const [loading, setLoading] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(false);  const [submitted, setSubmitted] = useState(false);
+  const [orderNumber, setOrderNumber] = useState("");
   const [telegramWebApp, setTelegramWebApp] = useState<any>(null);
   useEffect(() => {
     // Проверяем, запущено ли приложение в Telegram WebApp
@@ -84,9 +84,9 @@ export default function OrderSection() {
           "Content-Type": "application/json",
         },
         body: JSON.stringify(submitData),
-      });
-
-      if (response.ok) {
+      });      if (response.ok) {
+        const result = await response.json();
+        setOrderNumber(result.orderNumber);
         setSubmitted(true);
         setFormData({
           name: "",
@@ -147,10 +147,20 @@ export default function OrderSection() {
                 d="M5 13l4 4L19 7"
               />
             </svg>
-          </div>
-          <h2 className="text-3xl font-bold text-white mb-4">
+          </div>          <h2 className="text-3xl font-bold text-white mb-4">
             Заказ отправлен!
           </h2>
+          <div className="bg-purple-500/10 border border-purple-500/20 rounded-xl p-6 mb-6">
+            <p className="text-xl text-purple-300 font-semibold mb-2">
+              Номер заказа: {orderNumber}
+            </p>
+            <p className="text-gray-300 mb-4">
+              Чтобы получать уведомления о статусе заказа, напишите боту команду:
+            </p>
+            <div className="bg-black/30 rounded-lg p-3 font-mono text-green-400 text-center">
+              /link {orderNumber}
+            </div>
+          </div>
           <p className="text-xl text-gray-300 mb-8">
             Спасибо за ваш заказ! Я свяжусь с вами в ближайшее время для
             обсуждения деталей.

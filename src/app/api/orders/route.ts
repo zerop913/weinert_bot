@@ -8,7 +8,8 @@ import { eq } from "drizzle-orm";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const orderNumber = generateOrderNumber();    const newOrder = await db
+    const orderNumber = generateOrderNumber();
+    const newOrder = await db
       .insert(artOrders)
       .values({
         orderNumber,
@@ -41,8 +42,10 @@ export async function POST(request: NextRequest) {
 
         if (users.length > 0) {
           finalTelegramUserId = users[0].telegramId;
-          console.log(`Найден пользователь: ${finalTelegramUserId} (@${finalUsername})`);
-          
+          console.log(
+            `Найден пользователь: ${finalTelegramUserId} (@${finalUsername})`
+          );
+
           // Обновляем заказ с найденным telegramUserId
           await db
             .update(artOrders)
@@ -54,16 +57,17 @@ export async function POST(request: NextRequest) {
       } catch (error) {
         console.error("Ошибка поиска пользователя:", error);
       }
-    }// Отправляем уведомления
+    } // Отправляем уведомления
     const bot = getBotInstance();
     if (!bot && process.env.TELEGRAM_BOT_TOKEN) {
       // Инициализируем бота, если он еще не создан
       console.log("Инициализируем бота для уведомлений...");
       initializeBot(process.env.TELEGRAM_BOT_TOKEN);
-    }    const botInstance = getBotInstance();
+    }
+    const botInstance = getBotInstance();
     if (botInstance) {
       console.log("Отправляем уведомления для заказа:", orderNumber);
-      
+
       try {
         // Уведомление клиенту (используем найденный или оригинальный telegramUserId)
         if (finalTelegramUserId) {
@@ -75,7 +79,9 @@ export async function POST(request: NextRequest) {
           });
           console.log("Уведомление клиенту отправлено");
         } else {
-          console.log("Telegram ID пользователя не найден, уведомление клиенту не отправлено");
+          console.log(
+            "Telegram ID пользователя не найден, уведомление клиенту не отправлено"
+          );
         }
 
         // Уведомление админам (отправляется всегда)
@@ -89,7 +95,6 @@ export async function POST(request: NextRequest) {
           telegramUsername: finalUsername,
         });
         console.log("Уведомление админам отправлено");
-
       } catch (error) {
         console.error("Ошибка при отправке уведомлений:", error);
       }

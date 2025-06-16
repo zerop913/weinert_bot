@@ -24,10 +24,7 @@ export async function POST(request: NextRequest) {
       .limit(1);
 
     if (order.length === 0) {
-      return NextResponse.json(
-        { error: "Заказ не найден" },
-        { status: 404 }
-      );
+      return NextResponse.json({ error: "Заказ не найден" }, { status: 404 });
     }
 
     const orderData = order[0];
@@ -62,9 +59,9 @@ export async function POST(request: NextRequest) {
     const botInstance = getBotInstance();
     if (botInstance) {
       await botInstance.sendMessage(parseInt(telegramUserId), message);
-      return NextResponse.json({ 
-        success: true, 
-        message: "Сообщение отправлено пользователю" 
+      return NextResponse.json({
+        success: true,
+        message: "Сообщение отправлено пользователю",
       });
     } else {
       return NextResponse.json(
@@ -72,7 +69,6 @@ export async function POST(request: NextRequest) {
         { status: 500 }
       );
     }
-
   } catch (error) {
     console.error("Error sending message to user:", error);
     return NextResponse.json(
