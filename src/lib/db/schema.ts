@@ -86,3 +86,13 @@ export const settings = pgTable("settings", {
   description: text("description"),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
+
+export const telegramUsers = pgTable("telegram_users", {
+  id: uuid("id").defaultRandom().primaryKey(),
+  telegramId: text("telegram_id").notNull().unique(),
+  username: text("username"),
+  firstName: text("first_name"),
+  lastName: text("last_name"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});

@@ -122,9 +122,17 @@ export function AdminOrderCard({
         <p className="text-gray-300 line-clamp-2 bg-black/30 p-3 rounded-lg border border-gray-700/50">
           {order.idea}
         </p>
-      </div>{" "}
-      {/* Кнопки действий */}
+      </div>{" "}      {/* Кнопки действий */}
       <div className="flex flex-wrap gap-3 mb-4">
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={() => window.open(`/admin/${order.orderNumber}`, '_blank')}
+          className="px-4 py-2 bg-gradient-to-r from-green-500/20 to-emerald-500/20 border border-green-500/30 text-green-300 rounded-lg hover:from-green-500/30 hover:to-emerald-500/30 transition-all duration-300 backdrop-blur-sm"
+        >
+          📄 Открыть отдельно
+        </motion.button>
+
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}

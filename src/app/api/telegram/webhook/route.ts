@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
 import { initializeBot, getBotInstance } from "@/bot/bot";
+import { db } from "@/lib/db";
+import { telegramUsers } from "@/lib/db/schema";
+import { eq } from "drizzle-orm";
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
@@ -26,8 +29,51 @@ async function sendMessage(chatId: number, text: string, replyMarkup?: any) {
       reply_markup: replyMarkup,
     }),
   });
-
   return response.json();
+}
+
+// Функция для сохранения пользователя для уведомлений
+async function saveUserForNotifications(
+  telegramId?: number,
+  username?: string,
+  firstName?: string,
+  lastName?: string
+) {
+  if (!telegramId) return;
+
+  try {
+    // Проверяем, есть ли уже такой пользователь
+    const existingUser = await db
+      .select()
+      .from(telegramUsers)
+      .where(eq(telegramUsers.telegramId, telegramId.toString()))
+      .limit(1);
+
+    if (existingUser.length === 0) {
+      // Создаем нового пользователя
+      await db.insert(telegramUsers).values({
+        telegramId: telegramId.toString(),
+        username: username || null,
+        firstName: firstName || null,
+        lastName: lastName || null,
+      });
+      console.log(`Сохранен новый пользователь: ${telegramId} (@${username})`);
+    } else {
+      // Обновляем существующего пользователя
+      await db
+        .update(telegramUsers)
+        .set({
+          username: username || null,
+          firstName: firstName || null,
+          lastName: lastName || null,
+          updatedAt: new Date(),
+        })
+        .where(eq(telegramUsers.telegramId, telegramId.toString()));
+      console.log(`Обновлен пользователь: ${telegramId} (@${username})`);
+    }
+  } catch (error) {
+    console.error("Ошибка сохранения пользователя:", error);
+  }
 }
 
 // Обработка webhook от Telegram
@@ -52,9 +98,7 @@ export async function POST(request: NextRequest) {
       // Логируем информацию о пользователе для отладки
       console.log(
         `User ID: ${user?.id}, Username: ${user?.username}, Chat ID: ${chatId}, Message: ${text}`
-      );
-
-      // Обработка команды /start
+      );      // Обработка команды /start
       if (text === "/start") {
         const welcomeMessage =
           "Приветствую, меня зовут Лина (´｡• ᵕ •｡`) ♡\n\nЯ диджитал художница, рисующая в около-реализме уже несколько лет. Рада приветствовать в своем творческом уголке. 💓\n\nЧтобы оформить заказ и узнать больше о моих работах, нажмите кнопку ниже:";
@@ -86,7 +130,15 @@ export async function POST(request: NextRequest) {
         };
 
         await sendMessage(chatId, welcomeMessage, keyboard);
-      } // Обработка команды /admin
+        
+        // Сохраняем пользователя для возможных уведомлений
+        await saveUserForNotifications(user?.id, user?.username, user?.first_name, user?.last_name);
+      }
+      // Обработка команды /myid - для получения ID пользователя
+      else if (text === "/myid") {
+        const message = `🆔 Ваши данные:\n\n• ID: <code>${user?.id}</code>\n• Username: ${user?.username ? `@${user?.username}` : 'не указан'}\n• Имя: ${user?.first_name}${user?.last_name ? ` ${user?.last_name}` : ''}`;
+        await sendMessage(chatId, message);
+      }// Обработка команды /admin
       else if (text === "/admin") {
         const userId = user?.id;
 

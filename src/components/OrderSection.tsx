@@ -65,15 +65,15 @@ export default function OrderSection() {
         initDataUnsafe: telegramWebApp?.initDataUnsafe,
         user: telegramWebApp?.initDataUnsafe?.user,
         userId: telegramWebApp?.initDataUnsafe?.user?.id,
-      });
-
-      const submitData = {
+      });      const submitData = {
         ...formData,
         charactersCount: parseInt(formData.charactersCount) || 1,
         // Добавляем Telegram User ID если доступен
         telegramUserId: telegramWebApp?.initDataUnsafe?.user?.id?.toString(),
         // Добавляем Telegram Username если доступен
         telegramUsername: telegramWebApp?.initDataUnsafe?.user?.username || "",
+        // Fallback: если нет прямого ID, но есть username в contactInfo
+        fallbackUsername: formData.contactInfo.replace('@', '') || '',
       };
 
       console.log("Отправляемые данные:", submitData);

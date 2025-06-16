@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
-import { artOrders } from "@/lib/db/schema";
+import { artOrders, telegramUsers } from "@/lib/db/schema";
 import { generateOrderNumber } from "@/utils/orderUtils";
 import { getBotInstance, initializeBot } from "@/bot/bot";
 import { eq } from "drizzle-orm";
@@ -8,8 +8,7 @@ import { eq } from "drizzle-orm";
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const orderNumber = generateOrderNumber();
-    const newOrder = await db
+    const orderNumber = generateOrderNumber();    const newOrder = await db
       .insert(artOrders)
       .values({
         orderNumber,
@@ -22,10 +21,40 @@ export async function POST(request: NextRequest) {
         desiredPrice: body.desiredPrice,
         contactInfo: body.contactInfo || "",
         telegramUserId: body.telegramUserId || "",
-        telegramUsername: body.telegramUsername || "",
+        telegramUsername: body.telegramUsername || body.fallbackUsername || "",
         status: "новый",
       })
-      .returning(); // Отправляем уведомления
+      .returning();
+
+    // Попытка найти telegramUserId если его нет, но есть username
+    let finalTelegramUserId = body.telegramUserId;
+    let finalUsername = body.telegramUsername || body.fallbackUsername;
+
+    if (!finalTelegramUserId && finalUsername) {
+      console.log(`Ищем пользователя по username: ${finalUsername}`);
+      try {
+        const users = await db
+          .select()
+          .from(telegramUsers)
+          .where(eq(telegramUsers.username, finalUsername))
+          .limit(1);
+
+        if (users.length > 0) {
+          finalTelegramUserId = users[0].telegramId;
+          console.log(`Найден пользователь: ${finalTelegramUserId} (@${finalUsername})`);
+          
+          // Обновляем заказ с найденным telegramUserId
+          await db
+            .update(artOrders)
+            .set({ telegramUserId: finalTelegramUserId })
+            .where(eq(artOrders.id, newOrder[0].id!));
+        } else {
+          console.log(`Пользователь @${finalUsername} не найден в базе`);
+        }
+      } catch (error) {
+        console.error("Ошибка поиска пользователя:", error);
+      }
+    }// Отправляем уведомления
     const bot = getBotInstance();
     if (!bot && process.env.TELEGRAM_BOT_TOKEN) {
       // Инициализируем бота, если он еще не создан
@@ -36,9 +65,9 @@ export async function POST(request: NextRequest) {
       console.log("Отправляем уведомления для заказа:", orderNumber);
       
       try {
-        // Уведомление клиенту (только если есть telegramUserId)
-        if (body.telegramUserId) {
-          await botInstance.notifyOrderCreated(body.telegramUserId, {
+        // Уведомление клиенту (используем найденный или оригинальный telegramUserId)
+        if (finalTelegramUserId) {
+          await botInstance.notifyOrderCreated(finalTelegramUserId, {
             orderNumber,
             serviceName: "Художественная комиссия",
             price: body.desiredPrice,
@@ -56,8 +85,8 @@ export async function POST(request: NextRequest) {
           idea: body.idea,
           price: body.desiredPrice,
           deadline: body.deadline,
-          telegramUserId: body.telegramUserId,
-          telegramUsername: body.telegramUsername,
+          telegramUserId: finalTelegramUserId,
+          telegramUsername: finalUsername,
         });
         console.log("Уведомление админам отправлено");
 
