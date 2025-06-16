@@ -90,7 +90,9 @@ export function AdminOrderCard({
         </div>
       </div>
       {/* Основная информация */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">        <div className="space-y-3">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+        {" "}
+        <div className="space-y-3">
           <div>
             <p className="text-sm font-medium text-gray-400">👤 Клиент</p>
             <p className="text-white font-medium">{order.name}</p>
@@ -166,7 +168,6 @@ export function AdminOrderCard({
               {order.idea}
             </p>
           </div>
-
           {order.references && (
             <div>
               <p className="text-sm font-medium text-gray-400 mb-2">
@@ -177,7 +178,6 @@ export function AdminOrderCard({
               </p>
             </div>
           )}
-
           {order.additionalWishes && (
             <div>
               <p className="text-sm font-medium text-gray-400 mb-2">
@@ -188,7 +188,6 @@ export function AdminOrderCard({
               </p>
             </div>
           )}
-
           {order.contactInfo && (
             <div>
               <p className="text-sm font-medium text-gray-400 mb-2">
@@ -199,7 +198,6 @@ export function AdminOrderCard({
               </p>
             </div>
           )}
-
           {order.adminComment && (
             <div>
               <p className="text-sm font-medium text-gray-400 mb-2">
@@ -209,7 +207,8 @@ export function AdminOrderCard({
                 {order.adminComment}
               </p>
             </div>
-          )}          {order.telegramUserId && (
+          )}{" "}
+          {order.telegramUserId && (
             <div>
               <p className="text-sm font-medium text-gray-400 mb-2">
                 🤖 Telegram

@@ -1,7 +1,7 @@
 import { BOT_CONFIG, isAdmin, logAdminAction } from "./config";
 
 // Проверяем, что мы на сервере
-const isServer = typeof window === 'undefined';
+const isServer = typeof window === "undefined";
 
 // Импортируем TelegramBot только на сервере
 let TelegramBot: any = null;
@@ -11,17 +11,17 @@ if (isServer) {
 
 export class WeinertBot {
   private bot: any;
-
   constructor(token: string) {
     if (!isServer || !TelegramBot) {
       throw new Error("WeinertBot can only be initialized on the server");
     }
 
-    // В продакшене используем webhook, в разработке - polling
+    // В продакшене отключаем polling и webhook для отправки сообщений
+    // Webhook обрабатывается отдельно в API route
     const isProduction = process.env.NODE_ENV === "production";
     this.bot = new TelegramBot(token, {
       polling: !isProduction, // polling только в development
-      webHook: isProduction, // webhook только в production
+      webHook: false, // отключаем webhook, он обрабатывается отдельно
     });
 
     if (!isProduction) {
@@ -29,7 +29,9 @@ export class WeinertBot {
       this.setupHandlers();
       console.log("🤖 Telegram bot started with polling (development mode)");
     } else {
-      console.log("🤖 Telegram bot initialized for webhook (production mode)");
+      console.log(
+        "🤖 Telegram bot initialized for message sending (production mode)"
+      );
     }
   }
   private setupHandlers(): void {
@@ -134,7 +136,7 @@ export class WeinertBot {
     try {
       // Формируем информацию о пользователе
       let userInfo = `👤 Клиент: ${orderData.clientName}`;
-      
+
       if (orderData.telegramUsername) {
         userInfo += ` (@${orderData.telegramUsername})`;
       } else if (orderData.telegramUserId) {
@@ -204,7 +206,11 @@ export function initializeBot(token: string): WeinertBot {
 }
 
 // Автоматическая инициализация в development режиме (только на сервере)
-if (isServer && process.env.NODE_ENV === "development" && process.env.TELEGRAM_BOT_TOKEN) {
+if (
+  isServer &&
+  process.env.NODE_ENV === "development" &&
+  process.env.TELEGRAM_BOT_TOKEN
+) {
   try {
     initializeBot(process.env.TELEGRAM_BOT_TOKEN);
     console.log("🚀 Bot auto-initialized for development");

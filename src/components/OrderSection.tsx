@@ -45,7 +45,8 @@ export default function OrderSection() {
     e.preventDefault();
     setLoading(true);
 
-    try {      const submitData = {
+    try {
+      const submitData = {
         ...formData,
         charactersCount: parseInt(formData.charactersCount) || 1,
         // Добавляем Telegram User ID если доступен

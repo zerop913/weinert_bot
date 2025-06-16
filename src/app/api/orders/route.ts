@@ -2,13 +2,14 @@ import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { artOrders } from "@/lib/db/schema";
 import { generateOrderNumber } from "@/utils/orderUtils";
-import { getBotInstance } from "@/bot/bot";
+import { getBotInstance, initializeBot } from "@/bot/bot";
 import { eq } from "drizzle-orm";
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json();
-    const orderNumber = generateOrderNumber();    const newOrder = await db
+    const orderNumber = generateOrderNumber();
+    const newOrder = await db
       .insert(artOrders)
       .values({
         orderNumber,
@@ -24,26 +25,47 @@ export async function POST(request: NextRequest) {
         telegramUsername: body.telegramUsername || "",
         status: "новый",
       })
-      .returning();
-
-    // Отправляем уведомления
+      .returning(); // Отправляем уведомления
     const bot = getBotInstance();
-    if (bot && body.telegramUserId) {
-      // Уведомление клиенту
-      await bot.notifyOrderCreated(body.telegramUserId, {
-        orderNumber,
-        serviceName: "Художественная комиссия", // TODO: получать из данных о услуге
-        price: body.desiredPrice,
-        deadline: body.deadline,
-      });      // Уведомление админам
-      await bot.notifyAdminsNewOrder({
-        orderNumber,
-        clientName: body.name,
-        idea: body.idea,
-        price: body.desiredPrice,
-        deadline: body.deadline,
+    if (!bot && process.env.TELEGRAM_BOT_TOKEN) {
+      // Инициализируем бота, если он еще не создан
+      console.log("Инициализируем бота для уведомлений...");
+      initializeBot(process.env.TELEGRAM_BOT_TOKEN);
+    }
+
+    const botInstance = getBotInstance();
+    if (botInstance && body.telegramUserId) {
+      console.log("Отправляем уведомления для заказа:", orderNumber);
+
+      try {
+        // Уведомление клиенту
+        await botInstance.notifyOrderCreated(body.telegramUserId, {
+          orderNumber,
+          serviceName: "Художественная комиссия",
+          price: body.desiredPrice,
+          deadline: body.deadline,
+        });
+
+        // Уведомление админам
+        await botInstance.notifyAdminsNewOrder({
+          orderNumber,
+          clientName: body.name,
+          idea: body.idea,
+          price: body.desiredPrice,
+          deadline: body.deadline,
+          telegramUserId: body.telegramUserId,
+          telegramUsername: body.telegramUsername,
+        });
+
+        console.log("Уведомления отправлены успешно");
+      } catch (error) {
+        console.error("Ошибка при отправке уведомлений:", error);
+      }
+    } else {
+      console.log("Уведомления не отправлены:", {
+        botExists: !!botInstance,
         telegramUserId: body.telegramUserId,
-        telegramUsername: body.telegramUsername,
+        tokenExists: !!process.env.TELEGRAM_BOT_TOKEN,
       });
     }
 
