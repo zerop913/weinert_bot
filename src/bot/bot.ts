@@ -11,6 +11,8 @@ if (isServer) {
 
 export class WeinertBot {
   private bot: any;
+  private userLastMessages = new Map<number, number>(); // chatId -> messageId
+
   constructor(token: string) {
     if (!isServer || !TelegramBot) {
       throw new Error("WeinertBot can only be initialized on the server");
@@ -40,7 +42,7 @@ export class WeinertBot {
       const chatId = msg.chat.id;
       const userId = msg.from?.id;
       if (!userId || !isAdmin(userId)) {
-        await this.bot.sendMessage(chatId, BOT_MESSAGES.UNAUTHORIZED);
+        await this.sendOrEditMessage(chatId, BOT_MESSAGES.UNAUTHORIZED);
         return;
       }
 
@@ -57,7 +59,7 @@ export class WeinertBot {
         ],
       };
 
-      await this.bot.sendMessage(chatId, BOT_MESSAGES.ADMIN_WELCOME, {
+      await this.sendOrEditMessage(chatId, BOT_MESSAGES.ADMIN_WELCOME, {
         reply_markup: keyboard,
       });
     });
@@ -67,7 +69,6 @@ export class WeinertBot {
       console.error("Polling error:", error);
     });
   }
-
   /**
    * Отправляет уведомление клиенту о создании заказа
    */
@@ -81,6 +82,7 @@ export class WeinertBot {
     }
   ): Promise<void> {
     try {
+      const chatId = parseInt(telegramUserId);
       const message = `${BOT_MESSAGES.ORDER_CREATED_CLIENT}
 
 📋 Детали заказа:
@@ -91,12 +93,11 @@ export class WeinertBot {
 
 ⏳ Ожидайте ответа администратора.`;
 
-      await this.bot.sendMessage(parseInt(telegramUserId), message);
+      await this.sendOrEditMessage(chatId, message);
     } catch (error) {
       console.error("Error sending order created notification:", error);
     }
   }
-
   /**
    * Отправляет уведомление клиенту об отмене заказа
    */
@@ -106,6 +107,7 @@ export class WeinertBot {
     adminComment?: string
   ): Promise<void> {
     try {
+      const chatId = parseInt(telegramUserId);
       let message = BOT_MESSAGES.ORDER_CANCELLED_CLIENT.replace(
         "{orderNumber}",
         orderNumber
@@ -115,7 +117,7 @@ export class WeinertBot {
         message += `\n\n📝 Комментарий администратора:\n${adminComment}`;
       }
 
-      await this.bot.sendMessage(parseInt(telegramUserId), message);
+      await this.sendOrEditMessage(chatId, message);
     } catch (error) {
       console.error("Error sending order cancelled notification:", error);
     }
@@ -160,11 +162,9 @@ ${userInfo}
             },
           ],
         ],
-      };
-
-      // Отправляем уведомление всем админам
+      }; // Отправляем уведомление всем админам
       for (const adminId of BOT_CONFIG.ADMIN_IDS) {
-        await this.bot.sendMessage(adminId, message, {
+        await this.sendOrEditMessage(adminId, message, {
           reply_markup: keyboard,
         });
       }
@@ -172,7 +172,6 @@ ${userInfo}
       console.error("Error sending new order notification to admins:", error);
     }
   }
-
   /**
    * Отправляет сообщение в чат
    */
@@ -180,11 +179,132 @@ ${userInfo}
     chatId: number,
     message: string,
     options?: any
-  ): Promise<void> {
+  ): Promise<any> {
     try {
-      await this.bot.sendMessage(chatId, message, options);
+      const result = await this.bot.sendMessage(chatId, message, options);
+
+      // Сохраняем ID отправленного сообщения для будущего редактирования
+      if (result && result.message_id) {
+        this.userLastMessages.set(chatId, result.message_id);
+      }
+
+      return result;
     } catch (error) {
       console.error("Error sending message:", error);
+      return null;
+    }
+  }
+
+  /**
+   * Редактирует сообщение в чате
+   */
+  async editMessage(
+    chatId: number,
+    messageId: number,
+    message: string,
+    options?: any
+  ): Promise<any> {
+    try {
+      return await this.bot.editMessageText(message, {
+        chat_id: chatId,
+        message_id: messageId,
+        ...options,
+      });
+    } catch (error) {
+      console.error("Error editing message:", error);
+      return null;
+    }
+  }
+
+  /**
+   * Отправляет или редактирует сообщение (умная функция)
+   */
+  async sendOrEditMessage(
+    chatId: number,
+    message: string,
+    options?: any
+  ): Promise<any> {
+    const lastMessageId = this.userLastMessages.get(chatId);
+
+    if (lastMessageId) {
+      // Пытаемся отредактировать существующее сообщение
+      const editResult = await this.editMessage(
+        chatId,
+        lastMessageId,
+        message,
+        options
+      );
+      if (editResult) {
+        return editResult;
+      }
+      // Если редактирование не удалось, отправляем новое сообщение
+      console.log(
+        `Failed to edit message ${lastMessageId} for chat ${chatId}, sending new message`
+      );
+    }
+
+    // Отправляем новое сообщение
+    return await this.sendMessage(chatId, message, options);
+  }
+
+  /**
+   * Отправляет уведомление клиенту об изменении статуса заказа
+   */
+  async notifyOrderStatusUpdated(
+    telegramUserId: string,
+    orderNumber: string,
+    status: string
+  ): Promise<void> {
+    try {
+      const chatId = parseInt(telegramUserId);
+      const message = BOT_MESSAGES.ORDER_STATUS_UPDATED.replace(
+        "{orderNumber}",
+        orderNumber
+      ).replace("{status}", status);
+
+      await this.sendOrEditMessage(chatId, message);
+    } catch (error) {
+      console.error("Error sending order status update notification:", error);
+    }
+  }
+
+  /**
+   * Отправляет уведомление клиенту о том, что заказ взят в работу
+   */
+  async notifyOrderInProgress(
+    telegramUserId: string,
+    orderNumber: string
+  ): Promise<void> {
+    try {
+      const chatId = parseInt(telegramUserId);
+      const message = BOT_MESSAGES.ORDER_IN_PROGRESS.replace(
+        "{orderNumber}",
+        orderNumber
+      );
+
+      await this.sendOrEditMessage(chatId, message);
+    } catch (error) {
+      console.error("Error sending order in progress notification:", error);
+    }
+  }
+
+  /**
+   * Отправляет уведомление клиенту о готовности заказа
+   */
+  async notifyOrderCompleted(
+    telegramUserId: string,
+    orderNumber: string
+  ): Promise<void> {
+    try {
+      const chatId = parseInt(telegramUserId);
+      const message = BOT_MESSAGES.ORDER_COMPLETED.replace(
+        "{orderNumber}",
+        orderNumber
+      );
+
+      await this.sendOrEditMessage(chatId, message);
+    } catch (error) {
+      console.error("Error sending order completed notification:", error);
     }
   }
 }

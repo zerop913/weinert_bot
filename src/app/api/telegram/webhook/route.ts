@@ -14,7 +14,14 @@ if (!TELEGRAM_BOT_TOKEN) {
 // Инициализируем бота при первом запросе
 let botInitialized = false;
 
-// Функция для отправки сообщения в Telegram
+// Хранилище для отслеживания последних сообщений от бота для каждого пользователя
+// Это позволяет редактировать сообщения вместо отправки новых, избегая спама в чате
+const userLastMessages = new Map<number, number>(); // chatId -> messageId
+
+/**
+ * Функция для отправки сообщения в Telegram
+ * Автоматически сохраняет ID сообщения для будущего редактирования
+ */
 async function sendMessage(chatId: number, text: string, replyMarkup?: any) {
   const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`;
 
@@ -30,7 +37,75 @@ async function sendMessage(chatId: number, text: string, replyMarkup?: any) {
       reply_markup: replyMarkup,
     }),
   });
-  return response.json();
+
+  const result = await response.json();
+
+  // Сохраняем ID отправленного сообщения для будущего редактирования
+  if (result.ok && result.result && result.result.message_id) {
+    userLastMessages.set(chatId, result.result.message_id);
+  }
+
+  return result;
+}
+
+// Функция для редактирования сообщения в Telegram
+async function editMessage(
+  chatId: number,
+  messageId: number,
+  text: string,
+  replyMarkup?: any
+) {
+  const url = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/editMessageText`;
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify({
+      chat_id: chatId,
+      message_id: messageId,
+      text,
+      parse_mode: "HTML",
+      reply_markup: replyMarkup,
+    }),
+  });
+
+  const result = await response.json();
+  return result;
+}
+
+// Функция для отправки или редактирования сообщения (умная функция)
+async function sendOrEditMessage(
+  chatId: number,
+  text: string,
+  replyMarkup?: any
+) {
+  const lastMessageId = userLastMessages.get(chatId);
+
+  if (lastMessageId) {
+    // Пытаемся отредактировать существующее сообщение
+    try {
+      const result = await editMessage(
+        chatId,
+        lastMessageId,
+        text,
+        replyMarkup
+      );
+      if (result.ok) {
+        return result;
+      }
+      // Если редактирование не удалось, отправляем новое сообщение
+      console.log(
+        `Failed to edit message ${lastMessageId}, sending new message`
+      );
+    } catch (error) {
+      console.error("Error editing message:", error);
+    }
+  }
+
+  // Отправляем новое сообщение
+  return await sendMessage(chatId, text, replyMarkup);
 }
 
 // Функция для сохранения пользователя для уведомлений
@@ -109,7 +184,7 @@ export async function POST(request: NextRequest) {
                 web_app: {
                   url:
                     process.env.NEXT_PUBLIC_APP_URL ||
-                    "https://your-project.vercel.app",
+                    "https://weinert-bot.vercel.app",
                 },
               },
             ],
@@ -119,7 +194,7 @@ export async function POST(request: NextRequest) {
                 web_app: {
                   url: `${
                     process.env.NEXT_PUBLIC_APP_URL ||
-                    "https://your-project.vercel.app"
+                    "https://weinert-bot.vercel.app"
                   }/order`,
                 },
               },
@@ -147,7 +222,7 @@ export async function POST(request: NextRequest) {
           ],
         };
 
-        await sendMessage(chatId, BOT_MESSAGES.WELCOME, keyboard);
+        await sendOrEditMessage(chatId, BOT_MESSAGES.WELCOME, keyboard);
 
         // Сохраняем пользователя для возможных уведомлений
         await saveUserForNotifications(
@@ -160,9 +235,8 @@ export async function POST(request: NextRequest) {
       // Обработка команды /link для связывания с заказом
       else if (text.startsWith("/link ")) {
         const orderNumber = text.replace("/link ", "").trim();
-
         if (!orderNumber) {
-          await sendMessage(
+          await sendOrEditMessage(
             chatId,
             "❌ Укажите номер заказа.\nПример: /link W-001"
           );
@@ -176,9 +250,8 @@ export async function POST(request: NextRequest) {
             .from(artOrders)
             .where(eq(artOrders.orderNumber, orderNumber))
             .limit(1);
-
           if (orders.length === 0) {
-            await sendMessage(
+            await sendOrEditMessage(
               chatId,
               `❌ Заказ с номером ${orderNumber} не найден.`
             );
@@ -193,7 +266,7 @@ export async function POST(request: NextRequest) {
               telegramUsername: user?.username || null,
             })
             .where(eq(artOrders.orderNumber, orderNumber));
-          await sendMessage(
+          await sendOrEditMessage(
             chatId,
             `✅ Заказ ${orderNumber} успешно привязан к вашему аккаунту!\n\nТеперь вы будете получать уведомления о статусе заказа.`
           );
@@ -214,7 +287,7 @@ export async function POST(request: NextRequest) {
           );
         } catch (error) {
           console.error("Ошибка привязки заказа:", error);
-          await sendMessage(
+          await sendOrEditMessage(
             chatId,
             "❌ Произошла ошибка при привязке заказа. Попробуйте позже."
           );
@@ -222,9 +295,8 @@ export async function POST(request: NextRequest) {
       } // Обработка команды /admin
       else if (text === "/admin") {
         const userId = user?.id;
-
         if (!userId) {
-          await sendMessage(chatId, "❌ Ошибка авторизации");
+          await sendOrEditMessage(chatId, "❌ Ошибка авторизации");
           return NextResponse.json({ ok: true });
         }
 
@@ -234,9 +306,11 @@ export async function POST(request: NextRequest) {
           .split(",")
           .map((id) => parseInt(id.trim()));
         const isAdmin = ADMIN_IDS.includes(userId);
-
         if (!isAdmin) {
-          await sendMessage(chatId, "❌ У вас нет прав доступа к админ-панели");
+          await sendOrEditMessage(
+            chatId,
+            "❌ У вас нет прав доступа к админ-панели"
+          );
           return NextResponse.json({ ok: true });
         }
 
@@ -256,8 +330,7 @@ export async function POST(request: NextRequest) {
             ],
           ],
         };
-
-        await sendMessage(
+        await sendOrEditMessage(
           chatId,
           "🔐 Добро пожаловать в админ-панель!\n\nНажмите кнопку ниже, чтобы открыть панель управления заказами.",
           adminKeyboard
@@ -292,11 +365,10 @@ export async function POST(request: NextRequest) {
           ],
         };
 
-        await sendMessage(chatId, BOT_MESSAGES.HELP, keyboard);
-      }
-      // Новые команды
+        await sendOrEditMessage(chatId, BOT_MESSAGES.HELP, keyboard);
+      } // Новые команды
       else if (text === "/info") {
-        await sendMessage(chatId, BOT_MESSAGES.BOT_INFO);
+        await sendOrEditMessage(chatId, BOT_MESSAGES.BOT_INFO);
       } else if (text === "/pricing") {
         const keyboard = {
           inline_keyboard: [
@@ -313,11 +385,11 @@ export async function POST(request: NextRequest) {
             ],
           ],
         };
-        await sendMessage(chatId, BOT_MESSAGES.PRICING_INFO, keyboard);
+        await sendOrEditMessage(chatId, BOT_MESSAGES.PRICING_INFO, keyboard);
       } else if (text === "/status") {
-        await sendMessage(chatId, BOT_MESSAGES.ORDER_STATUS_INFO);
+        await sendOrEditMessage(chatId, BOT_MESSAGES.ORDER_STATUS_INFO);
       } else if (text.startsWith("/link_help")) {
-        await sendMessage(chatId, BOT_MESSAGES.LINK_INSTRUCTIONS);
+        await sendOrEditMessage(chatId, BOT_MESSAGES.LINK_INSTRUCTIONS);
       } else {
         // Ответ на любое другое сообщение
         const keyboard = {
@@ -334,7 +406,7 @@ export async function POST(request: NextRequest) {
             ],
           ],
         };
-        await sendMessage(chatId, BOT_MESSAGES.UNKNOWN_COMMAND, keyboard);
+        await sendOrEditMessage(chatId, BOT_MESSAGES.UNKNOWN_COMMAND, keyboard);
       }
     }
 
@@ -383,7 +455,7 @@ export async function POST(request: NextRequest) {
               ],
             ],
           };
-          await sendMessage(chatId, BOT_MESSAGES.HELP, helpKeyboard);
+          await sendOrEditMessage(chatId, BOT_MESSAGES.HELP, helpKeyboard);
           break;
 
         case "pricing":
@@ -408,7 +480,11 @@ export async function POST(request: NextRequest) {
               ],
             ],
           };
-          await sendMessage(chatId, BOT_MESSAGES.PRICING_INFO, pricingKeyboard);
+          await sendOrEditMessage(
+            chatId,
+            BOT_MESSAGES.PRICING_INFO,
+            pricingKeyboard
+          );
           break;
 
         case "status":
@@ -422,7 +498,7 @@ export async function POST(request: NextRequest) {
               ],
             ],
           };
-          await sendMessage(
+          await sendOrEditMessage(
             chatId,
             BOT_MESSAGES.ORDER_STATUS_INFO,
             statusKeyboard
@@ -444,7 +520,7 @@ export async function POST(request: NextRequest) {
               ],
             ],
           };
-          await sendMessage(chatId, BOT_MESSAGES.BOT_INFO, infoKeyboard);
+          await sendOrEditMessage(chatId, BOT_MESSAGES.BOT_INFO, infoKeyboard);
           break;
 
         case "link_help":
@@ -469,7 +545,7 @@ export async function POST(request: NextRequest) {
               ],
             ],
           };
-          await sendMessage(
+          await sendOrEditMessage(
             chatId,
             BOT_MESSAGES.LINK_INSTRUCTIONS,
             linkKeyboard
@@ -485,7 +561,7 @@ export async function POST(request: NextRequest) {
                   web_app: {
                     url:
                       process.env.NEXT_PUBLIC_APP_URL ||
-                      "https://your-project.vercel.app",
+                      "https://weinert-bot.vercel.app",
                   },
                 },
               ],
@@ -495,7 +571,7 @@ export async function POST(request: NextRequest) {
                   web_app: {
                     url: `${
                       process.env.NEXT_PUBLIC_APP_URL ||
-                      "https://your-project.vercel.app"
+                      "https://weinert-bot.vercel.app"
                     }/order`,
                   },
                 },
@@ -522,11 +598,10 @@ export async function POST(request: NextRequest) {
               ],
             ],
           };
-          await sendMessage(chatId, BOT_MESSAGES.WELCOME, startKeyboard);
+          await sendOrEditMessage(chatId, BOT_MESSAGES.WELCOME, startKeyboard);
           break;
-
         default:
-          await sendMessage(chatId, "❓ Неизвестная команда");
+          await sendOrEditMessage(chatId, "❓ Неизвестная команда");
       }
     }
 
