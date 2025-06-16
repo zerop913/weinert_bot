@@ -18,10 +18,10 @@ const nextConfig: NextConfig = {
         assert: false,
         os: false,
         path: false,
-        'supports-color': false,
+        "supports-color": false,
       };
     }
-    
+
     // Игнорируем предупреждения для node-telegram-bot-api
     config.ignoreWarnings = [
       { module: /node-telegram-bot-api/ },
@@ -30,7 +30,7 @@ const nextConfig: NextConfig = {
 
     return config;
   },
-  serverExternalPackages: ['node-telegram-bot-api'],
+  serverExternalPackages: ["node-telegram-bot-api"],
 };
 
 export default nextConfig;
