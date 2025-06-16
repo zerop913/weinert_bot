@@ -8,6 +8,13 @@
       "when": 1749954095652,
       "tag": "0000_worried_yellow_claw",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1750032132672,
+      "tag": "0001_tired_sumo",
+      "breakpoints": true
     }
   ]
 }

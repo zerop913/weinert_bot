@@ -5,10 +5,22 @@ import {
   uuid,
   integer,
   boolean,
+  pgEnum,
 } from "drizzle-orm/pg-core";
+
+// Enum для статусов заказов
+export const orderStatusEnum = pgEnum("order_status", [
+  "новый",
+  "в работе",
+  "выполнен",
+  "отменен",
+]);
 
 export const artOrders = pgTable("art_orders", {
   id: uuid("id").defaultRandom().primaryKey(),
+  orderNumber: text("order_number").notNull().unique(),
+  status: orderStatusEnum("status").default("новый").notNull(),
+  adminComment: text("admin_comment"), // Комментарий админа при отмене
   name: text("name").notNull(),
   charactersCount: integer("characters_count").notNull(),
   references: text("references").notNull(),
@@ -17,6 +29,7 @@ export const artOrders = pgTable("art_orders", {
   deadline: text("deadline").notNull(),
   desiredPrice: text("desired_price").notNull(),
   contactInfo: text("contact_info"),
+  telegramUserId: text("telegram_user_id"), // ID пользователя Telegram для уведомлений
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });

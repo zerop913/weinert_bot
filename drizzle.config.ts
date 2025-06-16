@@ -8,8 +8,6 @@ export default defineConfig({
   out: "./drizzle",
   dialect: "postgresql",
   dbCredentials: {
-    url:
-      process.env.DATABASE_URL ||
-      "postgresql://postgres:root@localhost:5432/weinert_bot",
+    url: process.env.DATABASE_URL || "null",
   },
 });

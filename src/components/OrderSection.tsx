@@ -1,7 +1,7 @@
 "use client";
 
 import { motion } from "framer-motion";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,21 +20,45 @@ export default function OrderSection() {
   });
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
+  const [telegramWebApp, setTelegramWebApp] = useState<any>(null);
+
+  useEffect(() => {
+    // Проверяем, запущено ли приложение в Telegram WebApp
+    if (typeof window !== "undefined" && (window as any).Telegram?.WebApp) {
+      const tg = (window as any).Telegram.WebApp;
+      setTelegramWebApp(tg);
+      tg.ready();
+
+      // Получаем данные пользователя из Telegram
+      if (tg.initDataUnsafe?.user) {
+        const user = tg.initDataUnsafe.user;
+        setFormData((prev) => ({
+          ...prev,
+          name: user.first_name + (user.last_name ? ` ${user.last_name}` : ""),
+          contactInfo: user.username ? `@${user.username}` : "",
+        }));
+      }
+    }
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
+      const submitData = {
+        ...formData,
+        charactersCount: parseInt(formData.charactersCount) || 1,
+        // Добавляем Telegram User ID если доступен
+        telegramUserId: telegramWebApp?.initDataUnsafe?.user?.id?.toString(),
+      };
+
       const response = await fetch("/api/orders", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({
-          ...formData,
-          charactersCount: parseInt(formData.charactersCount) || 1,
-        }),
+        body: JSON.stringify(submitData),
       });
 
       if (response.ok) {
@@ -49,6 +73,11 @@ export default function OrderSection() {
           desiredPrice: "",
           contactInfo: "",
         });
+
+        // Закрываем WebApp после успешной отправки
+        if (telegramWebApp) {
+          telegramWebApp.close();
+        }
       }
     } catch (error) {
       console.error("Error submitting order:", error);

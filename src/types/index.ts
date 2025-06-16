@@ -1,5 +1,10 @@
+export type OrderStatus = "новый" | "в работе" | "выполнен" | "отменен";
+
 export interface ArtOrder {
   id?: string;
+  orderNumber?: string;
+  status?: OrderStatus;
+  adminComment?: string;
   name: string;
   charactersCount: number;
   references: string;
@@ -8,6 +13,7 @@ export interface ArtOrder {
   deadline: string;
   desiredPrice: string;
   contactInfo?: string;
+  telegramUserId?: string;
   createdAt?: Date;
   updatedAt?: Date;
 }
