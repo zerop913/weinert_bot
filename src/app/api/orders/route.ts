@@ -31,22 +31,25 @@ export async function POST(request: NextRequest) {
       // Инициализируем бота, если он еще не создан
       console.log("Инициализируем бота для уведомлений...");
       initializeBot(process.env.TELEGRAM_BOT_TOKEN);
-    }
-
-    const botInstance = getBotInstance();
-    if (botInstance && body.telegramUserId) {
+    }    const botInstance = getBotInstance();
+    if (botInstance) {
       console.log("Отправляем уведомления для заказа:", orderNumber);
-
+      
       try {
-        // Уведомление клиенту
-        await botInstance.notifyOrderCreated(body.telegramUserId, {
-          orderNumber,
-          serviceName: "Художественная комиссия",
-          price: body.desiredPrice,
-          deadline: body.deadline,
-        });
+        // Уведомление клиенту (только если есть telegramUserId)
+        if (body.telegramUserId) {
+          await botInstance.notifyOrderCreated(body.telegramUserId, {
+            orderNumber,
+            serviceName: "Художественная комиссия",
+            price: body.desiredPrice,
+            deadline: body.deadline,
+          });
+          console.log("Уведомление клиенту отправлено");
+        } else {
+          console.log("Telegram ID пользователя не найден, уведомление клиенту не отправлено");
+        }
 
-        // Уведомление админам
+        // Уведомление админам (отправляется всегда)
         await botInstance.notifyAdminsNewOrder({
           orderNumber,
           clientName: body.name,
@@ -56,15 +59,14 @@ export async function POST(request: NextRequest) {
           telegramUserId: body.telegramUserId,
           telegramUsername: body.telegramUsername,
         });
+        console.log("Уведомление админам отправлено");
 
-        console.log("Уведомления отправлены успешно");
       } catch (error) {
         console.error("Ошибка при отправке уведомлений:", error);
       }
     } else {
-      console.log("Уведомления не отправлены:", {
+      console.log("Бот не инициализирован:", {
         botExists: !!botInstance,
-        telegramUserId: body.telegramUserId,
         tokenExists: !!process.env.TELEGRAM_BOT_TOKEN,
       });
     }

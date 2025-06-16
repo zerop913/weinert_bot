@@ -21,7 +21,6 @@ export default function OrderSection() {
   const [loading, setLoading] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const [telegramWebApp, setTelegramWebApp] = useState<any>(null);
-
   useEffect(() => {
     // Проверяем, запущено ли приложение в Telegram WebApp
     if (typeof window !== "undefined" && (window as any).Telegram?.WebApp) {
@@ -29,23 +28,45 @@ export default function OrderSection() {
       setTelegramWebApp(tg);
       tg.ready();
 
+      console.log("Telegram WebApp инициализирован:", {
+        isExpanded: tg.isExpanded,
+        initData: tg.initData,
+        initDataUnsafe: tg.initDataUnsafe,
+        user: tg.initDataUnsafe?.user,
+      });
+
       // Получаем данные пользователя из Telegram
       if (tg.initDataUnsafe?.user) {
         const user = tg.initDataUnsafe.user;
+        console.log("Данные пользователя Telegram:", user);
         setFormData((prev) => ({
           ...prev,
           name: user.first_name + (user.last_name ? ` ${user.last_name}` : ""),
           contactInfo: user.username ? `@${user.username}` : "",
         }));
+      } else {
+        console.log("Данные пользователя недоступны");
+        // Попробуем расширить WebApp для получения данных
+        tg.expand();
       }
+    } else {
+      console.log("Telegram WebApp недоступен");
     }
   }, []);
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
     try {
+      // Отладочная информация
+      console.log("Telegram WebApp данные:", {
+        webApp: !!telegramWebApp,
+        initData: telegramWebApp?.initData,
+        initDataUnsafe: telegramWebApp?.initDataUnsafe,
+        user: telegramWebApp?.initDataUnsafe?.user,
+        userId: telegramWebApp?.initDataUnsafe?.user?.id,
+      });
+
       const submitData = {
         ...formData,
         charactersCount: parseInt(formData.charactersCount) || 1,
@@ -54,6 +75,8 @@ export default function OrderSection() {
         // Добавляем Telegram Username если доступен
         telegramUsername: telegramWebApp?.initDataUnsafe?.user?.username || "",
       };
+
+      console.log("Отправляемые данные:", submitData);
 
       const response = await fetch("/api/orders", {
         method: "POST",
