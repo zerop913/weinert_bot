@@ -49,6 +49,11 @@ export async function POST(request: NextRequest) {
       const text = message.text;
       const user = message.from;
 
+      // Логируем информацию о пользователе для отладки
+      console.log(
+        `User ID: ${user?.id}, Username: ${user?.username}, Chat ID: ${chatId}, Message: ${text}`
+      );
+
       // Обработка команды /start
       if (text === "/start") {
         const welcomeMessage =
@@ -81,26 +86,49 @@ export async function POST(request: NextRequest) {
         };
 
         await sendMessage(chatId, welcomeMessage, keyboard);
-      }
-      // Обработка команды /admin
+      } // Обработка команды /admin
       else if (text === "/admin") {
-        const bot = getBotInstance();
-        if (bot) {
-          // Используем метод бота для обработки админ-команды
-          const userId = user?.id;
-          if (userId) {
-            // Создаем фиктивное сообщение для обработки
-            const adminMessage = {
-              chat: { id: chatId },
-              from: { id: userId },
-              text: "/admin",
-            };
+        const userId = user?.id;
 
-            // Здесь можно добавить вызов обработчика админ-команды
-            // Пока просто отправляем базовый ответ
-            await sendMessage(chatId, "Обработка команды /admin...");
-          }
+        if (!userId) {
+          await sendMessage(chatId, "❌ Ошибка авторизации");
+          return NextResponse.json({ ok: true });
         }
+
+        // Проверяем права администратора
+        const adminIdsStr = process.env.ADMIN_TELEGRAM_IDS || "1109961645";
+        const ADMIN_IDS = adminIdsStr
+          .split(",")
+          .map((id) => parseInt(id.trim()));
+        const isAdmin = ADMIN_IDS.includes(userId);
+
+        if (!isAdmin) {
+          await sendMessage(chatId, "❌ У вас нет прав доступа к админ-панели");
+          return NextResponse.json({ ok: true });
+        }
+
+        // Отправляем приветствие администратора с кнопкой для перехода в админку
+        const adminKeyboard = {
+          inline_keyboard: [
+            [
+              {
+                text: "🔧 Перейти в админку",
+                web_app: {
+                  url: `${
+                    process.env.NEXT_PUBLIC_APP_URL ||
+                    "https://weinert-bot.vercel.app"
+                  }/admin`,
+                },
+              },
+            ],
+          ],
+        };
+
+        await sendMessage(
+          chatId,
+          "🔐 Добро пожаловать в админ-панель!\n\nНажмите кнопку ниже, чтобы открыть панель управления заказами.",
+          adminKeyboard
+        );
       }
       // Обработка других команд
       else if (text === "/help") {

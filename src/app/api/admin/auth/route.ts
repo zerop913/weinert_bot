@@ -4,6 +4,17 @@ export async function POST(request: NextRequest) {
   try {
     const { password, telegramUserId } = await request.json();
 
+    // Отладочная информация
+    console.log("Auth attempt:", {
+      receivedPassword: password
+        ? `${password.substring(0, 3)}...`
+        : "no password",
+      envPassword: process.env.ADMIN_PASSWORD
+        ? `${process.env.ADMIN_PASSWORD.substring(0, 3)}...`
+        : "no env password",
+      telegramUserId,
+    });
+
     // Проверяем авторизацию через пароль
     if (password && password === process.env.ADMIN_PASSWORD) {
       return NextResponse.json({

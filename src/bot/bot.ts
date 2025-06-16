@@ -5,8 +5,20 @@ export class WeinertBot {
   private bot: TelegramBot;
 
   constructor(token: string) {
-    this.bot = new TelegramBot(token, { polling: true });
-    this.setupHandlers();
+    // В продакшене используем webhook, в разработке - polling
+    const isProduction = process.env.NODE_ENV === "production";
+    this.bot = new TelegramBot(token, {
+      polling: !isProduction, // polling только в development
+      webHook: isProduction, // webhook только в production
+    });
+
+    if (!isProduction) {
+      // Настраиваем обработчики только для локальной разработки с polling
+      this.setupHandlers();
+      console.log("🤖 Telegram bot started with polling (development mode)");
+    } else {
+      console.log("🤖 Telegram bot initialized for webhook (production mode)");
+    }
   }
 
   private setupHandlers(): void {
@@ -168,4 +180,14 @@ export function initializeBot(token: string): WeinertBot {
     botInstance = new WeinertBot(token);
   }
   return botInstance;
+}
+
+// Автоматическая инициализация в development режиме
+if (process.env.NODE_ENV === "development" && process.env.TELEGRAM_BOT_TOKEN) {
+  try {
+    initializeBot(process.env.TELEGRAM_BOT_TOKEN);
+    console.log("🚀 Bot auto-initialized for development");
+  } catch (error) {
+    console.error("❌ Failed to auto-initialize bot:", error);
+  }
 }
