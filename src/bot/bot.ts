@@ -1,10 +1,22 @@
-import TelegramBot from "node-telegram-bot-api";
 import { BOT_CONFIG, isAdmin, logAdminAction } from "./config";
 
+// Проверяем, что мы на сервере
+const isServer = typeof window === 'undefined';
+
+// Импортируем TelegramBot только на сервере
+let TelegramBot: any = null;
+if (isServer) {
+  TelegramBot = require("node-telegram-bot-api");
+}
+
 export class WeinertBot {
-  private bot: TelegramBot;
+  private bot: any;
 
   constructor(token: string) {
+    if (!isServer || !TelegramBot) {
+      throw new Error("WeinertBot can only be initialized on the server");
+    }
+
     // В продакшене используем webhook, в разработке - polling
     const isProduction = process.env.NODE_ENV === "production";
     this.bot = new TelegramBot(token, {
@@ -20,10 +32,9 @@ export class WeinertBot {
       console.log("🤖 Telegram bot initialized for webhook (production mode)");
     }
   }
-
   private setupHandlers(): void {
     // Команда /admin
-    this.bot.onText(/\/admin/, async (msg) => {
+    this.bot.onText(/\/admin/, async (msg: any) => {
       const chatId = msg.chat.id;
       const userId = msg.from?.id;
 
@@ -51,7 +62,7 @@ export class WeinertBot {
     });
 
     // Обработка ошибок
-    this.bot.on("polling_error", (error) => {
+    this.bot.on("polling_error", (error: any) => {
       console.error("Polling error:", error);
     });
   }
@@ -182,8 +193,8 @@ export function initializeBot(token: string): WeinertBot {
   return botInstance;
 }
 
-// Автоматическая инициализация в development режиме
-if (process.env.NODE_ENV === "development" && process.env.TELEGRAM_BOT_TOKEN) {
+// Автоматическая инициализация в development режиме (только на сервере)
+if (isServer && process.env.NODE_ENV === "development" && process.env.TELEGRAM_BOT_TOKEN) {
   try {
     initializeBot(process.env.TELEGRAM_BOT_TOKEN);
     console.log("🚀 Bot auto-initialized for development");
